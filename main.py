@@ -38,25 +38,32 @@ app.layout = html.Div(style={
             options=[{'label': i, 'value': i} for i in available_cols],
             value=available_cols[0]
         ),
-        dcc.RangeSlider(
-            id="colorbar_slider",
+        dcc.Input(
+            id="input1",
+            type="number",
+            placeholder="Min"
         ),
-        html.Div(id="output_colorbar_slider"),
+        dcc.Input(
+            id="input2",
+            type="number",
+            placeholder="Max"
+        ),
         dcc.Graph(id='graph1')
     ],
 )
 
-@app.callback(
-    Output('output_colorbar_slider', 'children'),
-    Input('colorbar_slider', 'value'))
-def update_output(value):
-    return 'You have selected "{}"'.format(value)
+# @app.callback(
+#     Output('output_colorbar_slider', 'children'),
+#     Input('colorbar_slider', 'value'))
+# def update_output(value):
+#     return 'You have selected "{}"'.format(value)
 
 @app.callback(
     Output("graph1", "figure"),
     [Input("select_col", "value"),
-     Input("colorbar_slider", "value")])
-def update_figure(selected_col, color_val):
+     Input("input1", "value"),
+     Input("input2", "value")])
+def update_figure(selected_col, colorbar_min, colorbar_max):
     # fig = go.Figure(
     #     data=[
     #         go.Scatter(
@@ -83,13 +90,12 @@ def update_figure(selected_col, color_val):
     #         title=selected_col
     #     )
     # )
-    print(color_val)
     fig = px.scatter(data,
                      x="REC_X",
                      y="REC_Y",
                      color=selected_col,
                      color_continuous_scale="rainbow",
-                     range_color=color_val,
+                     range_color=[colorbar_min, colorbar_max],
                      hover_name="REC_ID")
     # Scaling x and y axis
     fig.update_yaxes(
@@ -98,8 +104,8 @@ def update_figure(selected_col, color_val):
     )
     # Update fig size
     fig.update_layout(
-        # width=700,
-        # height=700,
+        width=700,
+        height=700,
         margin=dict(
             l=40,
             r=30,
