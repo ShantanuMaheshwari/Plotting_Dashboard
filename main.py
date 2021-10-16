@@ -2,8 +2,8 @@
 import numpy as np
 import pandas as pd
 import dash
-import dash_core_components as dcc
-import dash_html_components as html
+from dash import html, dcc
+import dash_bootstrap_components as dbc
 import plotly.graph_objects as go
 from dash.dependencies import Input, Output
 import plotly.express as px
@@ -17,7 +17,7 @@ app = dash.Dash(__name__)
 data = pd.read_csv("./data/rf-0917-FinalRecDB-rms", delimiter="\s+")
 
 # %%
-available_cols = ["DRIFTA", "DRIFTB", "ZSTART", "ZDEPLOY", "ZPICKUP"]
+available_cols = ["DRIFTA", "DRIFTB", "ZSTART", "ZDEPLOY", "ZPICKUP", "NHITS"]
 
 # %%
 
@@ -29,48 +29,68 @@ available_cols = ["DRIFTA", "DRIFTB", "ZSTART", "ZDEPLOY", "ZPICKUP"]
 # %%
 
 app.layout = html.Div(style={
-    'backgroundColor': '#111111'
+    'backgroundColor': 'White',
+    'columnCount': 1
 },
     children=[
-        dcc.Graph(id='graph1'),
         dcc.Dropdown(
             id="select_col",
             options=[{'label': i, 'value': i} for i in available_cols],
             value=available_cols[0]
-        )
-    ]
+        ),
+        dcc.RangeSlider(
+            id="colorbar_slider",
+        ),
+        html.Div(id="output_colorbar_slider"),
+        dcc.Graph(id='graph1')
+    ],
 )
 
+@app.callback(
+    Output('output_colorbar_slider', 'children'),
+    Input('colorbar_slider', 'value'))
+def update_output(value):
+    return 'You have selected "{}"'.format(value)
 
 @app.callback(
     Output("graph1", "figure"),
-    Input("select_col", "value"))
-def update_figure(selected_col):
-    fig = go.Figure(
-        data=[
-            go.Scatter(
-                x=data['REC_X'],
-                y=data['REC_Y'],
-                mode='markers',
-                marker=dict(
-                    size=5,
-                    color=data[selected_col],
-                    colorscale='Rainbow',
-                    showscale=True,
-                ),
-                text=data['REC_ID'],
-                hovertemplate=
-                "<b>%{text}</b><br>" +
-                "X: %{x}<br>" +
-                "Y: %{y}<br>" +
-                selected_col + ": %{marker.color:, %d}" +
-                "<extra></extra>",
-            )
-        ],
-        layout=go.Layout(
-            title=selected_col
-        )
-    )
+    [Input("select_col", "value"),
+     Input("colorbar_slider", "value")])
+def update_figure(selected_col, color_val):
+    # fig = go.Figure(
+    #     data=[
+    #         go.Scatter(
+    #             x=data['REC_X'],
+    #             y=data['REC_Y'],
+    #             mode='markers',
+    #             marker=dict(
+    #                 size=5,
+    #                 color=data[selected_col],
+    #                 colorscale='Rainbow',
+    #                 showscale=True,
+    #                 range_color = [0, 10]
+    #             ),
+    #             text=data['REC_ID'],
+    #             hovertemplate=
+    #             "<b>%{text}</b><br>" +
+    #             "X: %{x}<br>" +
+    #             "Y: %{y}<br>" +
+    #             selected_col + ": %{marker.color:, %d}" +
+    #             "<extra></extra>",
+    #         )
+    #     ],
+    #     layout=go.Layout(
+    #         title=selected_col
+    #     )
+    # )
+    print(color_val)
+    fig = px.scatter(data,
+                     x="REC_X",
+                     y="REC_Y",
+                     color=selected_col,
+                     color_continuous_scale="rainbow",
+                     range_color=color_val,
+                     hover_name="REC_ID")
     # Scaling x and y axis
     fig.update_yaxes(
         scaleanchor="x",
@@ -78,8 +98,8 @@ def update_figure(selected_col):
     )
     # Update fig size
     fig.update_layout(
-        width=680,
-        height=680,
+        # width=700,
+        # height=700,
         margin=dict(
             l=40,
             r=30,
