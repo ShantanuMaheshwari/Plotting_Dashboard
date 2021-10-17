@@ -1,12 +1,13 @@
 """Importing Libraries"""
 import base64
 import io
-import numpy as np
+
+# import numpy as np
 import pandas as pd
-import dash
-from dash import html, dcc
-import dash_bootstrap_components as dbc
-import plotly.graph_objects as go
+# import dash
+from dash import html, dcc, dash_table, no_update, Dash
+# import dash_bootstrap_components as dbc
+# import plotly.graph_objects as go
 from dash.dependencies import Input, Output, State
 import plotly.express as px
 from flask import Flask
@@ -17,7 +18,7 @@ from flask import Flask
 
 external_stylesheets = ['https://codepen.io/chriddyp/pen/bWLwgP.css']
 server = Flask(__name__)
-app = dash.Dash(external_stylesheets=external_stylesheets, server=server)
+app = Dash(external_stylesheets=external_stylesheets, server=server)
 
 # %%
 
@@ -25,13 +26,6 @@ app = dash.Dash(external_stylesheets=external_stylesheets, server=server)
 
 # %%
 # available_cols = ["DRIFTA", "DRIFTB", "ZSTART", "ZDEPLOY", "ZPICKUP", "NHITS"]
-
-# %%
-
-# # pyo.plot(figure_or_data=fig)
-# fig.show()
-# Using plotly express
-# fig = px.scatter(data, x="REC_X", y="REC_Y", color="NHITS")
 
 # %%
 
@@ -54,7 +48,7 @@ app.layout = html.Div(style={
                 ],
                 style={
                     # 'width': '49%',
-                    # 'height': "20px", 'borderWidth': '1px',
+                    # 'height': "30px", 'borderWidth': '1px',
                     # 'borderRadius': '5px',
                     'textAlign': 'center',
                 }
@@ -66,14 +60,15 @@ app.layout = html.Div(style={
             [
                 html.Div(
                     [
+                        # Display graph
                         html.Div(
                             [
                                 dcc.Graph(id="graph1")
                             ],
                             style={
                                 'display': 'inline-block',
-                                # 'width': '74%',
-                                # 'height': "auto",
+                                'width': '84%',
+                                # 'height': "auto%",
                             }
                         ),
                         html.Div(
@@ -145,7 +140,8 @@ app.layout = html.Div(style={
                                             ],
                                         )
                                     ],
-                                    style={"padding": 10}
+                                    style={"padding": 10,
+                                           "width": "150%"}
                                 ),
 
                                 # Colorbar range
@@ -171,7 +167,7 @@ app.layout = html.Div(style={
                                                     style={
                                                         # "padding": 20,
                                                         # "float": "right",
-                                                        "width": "15%"
+                                                        # "width": "50%"
                                                     }
                                                 )
                                             ],
@@ -179,37 +175,71 @@ app.layout = html.Div(style={
                                     ],
                                     style={
                                         'padding': 10,
-                                        # "float": "left",
-                                        # "width": "15%"
+                                        "width": "100%"
                                     }
                                 ),
-                                # html.Div(
-                                #     [
-                                #         html.Label(
-                                #             [
-                                #                 "Colorbar max value",
-                                #                 dcc.Input(
-                                #                     id = "colorbar-max",
-                                #                     type="number",
-                                #                     placeholder="max value"
-                                #                 )
-                                #             ]
-                                #         )
-                                #     ],
-                                #     style={
-                                #         "padding": 10,
-                                #         "float": "right",
-                                #         "width": "25%"
-                                #     }
-                                # )
+
+                                # Filter data
+                                html.Div(
+                                    [
+                                        html.Label(
+                                            [
+                                                "Enter query to filter data",
+                                                dcc.Input(
+                                                    id="filter-query",
+                                                    type="text",
+                                                    placeholder="Query",
+                                                    value="",
+                                                )
+                                            ]
+                                        )
+                                    ],
+                                    style={
+                                        "padding": 10,
+                                        "width": "150%"
+                                    }
+                                ),
+
+                                # Filter Graph
+                                html.Div(
+                                    [
+                                        html.Label(
+                                            [
+                                                "Filter Graph points",
+                                                html.Div(
+                                                    [
+                                                        dcc.RadioItems(
+                                                            id="filter-graph",
+                                                            options=[
+                                                                {"label": "Original", "value": "orig"},
+                                                                {"label": "Filtered", "value": "filter"}
+                                                            ],
+                                                            value="orig"
+                                                        )
+                                                    ]
+                                                )
+                                            ]
+                                        )
+                                    ],
+                                    style={
+                                        "padding": 10,
+                                    }
+                                )
                             ],
                             style={
                                 "display": "inline-block",
-                                "width": "25%",
+                                "width": "15%",
                                 "float": "right",
                                 "fontSize": 14,
                                 "font-family": "Ariel",
                                 "backgroundColor": "#ffffff"
+                            }
+                        ),
+                        html.Div(
+                            id="show-table",
+                            style={
+                                "display": "inline-block",
+                                "width": "50%"
                             }
                         )
                     ],
@@ -221,28 +251,10 @@ app.layout = html.Div(style={
                 )
             ]
         ),
-        # dcc.Dropdown(
-        #     id="color_col",
-        #     options=[{'label': i, 'value': i} for i in available_cols],
-        #     value=available_cols[0]
-        # ),
-        #
-        # dcc.Input(
-        #     id="colorbar_min",
-        #     type="number",
-        #     placeholder="Min"
-        # ),
-        # dcc.Input(
-        #     id="colorbar_max",
-        #     type="number",
-        #     placeholder="Max"
-        # ),
-        # dcc.Graph(id='graph1')
     ],
 )
 
 
-# Load Data
 def parse_contents(contents, filename):
     content_type, content_string = contents.split(',')
     decoded = base64.b64decode(content_string)
@@ -264,12 +276,14 @@ def parse_contents(contents, filename):
     return df
 
 
+# Load Data
 @app.callback(Output("csv-data", "data"),
               [Input("data-table-upload", "contents")],
-              [State("data-table-upload", "filename")])
+              [State("data-table-upload", "filename")],
+              prevent_initial_call=True, )
 def parse_uploaded_file(contents, filename):
     if not filename:
-        return dash.no_update
+        return no_update
     df = parse_contents(contents, filename)
     return df.to_json(date_format="iso", orient="split")
 
@@ -283,7 +297,7 @@ def parse_uploaded_file(contents, filename):
     [Input("csv-data", "data")])
 def populate_x_y_color_dropdown(data):
     if not data:
-        return dash.no_update, dash.no_update, dash.no_update, dash.no_update
+        return no_update, no_update, no_update, no_update
     df = pd.read_json(data, orient="split")
     options = [{"label": i, "value": i} for i in df.columns]
     return options, options, options, options
@@ -297,10 +311,12 @@ def populate_x_y_color_dropdown(data):
      Input("color-variable", "value"),
      Input("colorbar-min", "value"),
      Input("colorbar-max", "value"),
-     Input("annotation", "value")],
+     Input("annotation", "value"),
+     Input("filter-query", "value"),
+     Input("filter-graph", "value")],
     State("csv-data", "data")
 )
-def update_figure(x_var, y_var, color_var, colorbar_min, colorbar_max, annotation, data):
+def update_figure(x_var, y_var, color_var, colorbar_min, colorbar_max, annotation, filter_query, filter_graph, data):
     # fig = go.Figure(
     #     data=[
     #         go.Scatter(
@@ -328,6 +344,10 @@ def update_figure(x_var, y_var, color_var, colorbar_min, colorbar_max, annotatio
     #     )
     # )
     df = pd.read_json(data, orient="split")
+    if filter_query != "" and filter_graph == "filter":
+        print("Inside graph query: ", filter_query)
+        df.query(filter_query, inplace=True)
+        print(df.columns)
     fig = px.scatter(df,
                      x=x_var,
                      y=y_var,
@@ -336,7 +356,7 @@ def update_figure(x_var, y_var, color_var, colorbar_min, colorbar_max, annotatio
                      range_color=[colorbar_min, colorbar_max],
                      hover_name=df.columns[0],
                      hover_data=annotation)
-    fig.update_traces(marker_size=5)
+    fig.update_traces(marker_size=7)
     # Scaling x and y axis
     fig.update_yaxes(
         scaleanchor="x",
@@ -344,8 +364,8 @@ def update_figure(x_var, y_var, color_var, colorbar_min, colorbar_max, annotatio
     )
     # Update fig size
     fig.update_layout(
-        width=700,
-        height=700,
+        width=800,
+        height=800,
         margin=dict(
             l=40,
             r=30,
@@ -356,6 +376,35 @@ def update_figure(x_var, y_var, color_var, colorbar_min, colorbar_max, annotatio
         paper_bgcolor="White",
     )
     return fig
+
+
+# Display Table
+@app.callback(
+    Output("show-table", "children"),
+    [Input("x-variable", "value"),
+     Input("y-variable", "value"),
+     Input("color-variable", "value"),
+     Input("annotation", "value"),
+     Input("filter-query", "value")],
+    State("csv-data", "data")
+)
+def show_table(x_var, y_var, col_var, annotation, filter_query, data):
+    if not (x_var and y_var and col_var):
+        return no_update
+    df = pd.read_json(data, orient="split")
+    cols = [df.columns[0], x_var, y_var, col_var]
+    if annotation is not None:
+        for c in annotation:
+            cols.append(c)
+    if filter_query != "":
+        df.query(filter_query, inplace=True)
+    df = df.loc[:, cols]
+    table = dash_table.DataTable(
+        id="table",
+        columns=[{"name": i, "id": i} for i in df.columns],
+        data=df.to_dict("records")
+    )
+    return table
 
 
 if __name__ == '__main__':
